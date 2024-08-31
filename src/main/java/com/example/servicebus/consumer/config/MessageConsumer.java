@@ -26,7 +26,6 @@ public class MessageConsumer {
 
   private final boolean autoComplete;
 
-  @Value("${spring.cloud.stream.servicebus.bindings.consume-in-0.consumer.max-auto-lock-renew-duration:PT0s}")
   private final Duration maxAutoLockRenewDuration;
 
   private final ObjectMapper objectMapper;
