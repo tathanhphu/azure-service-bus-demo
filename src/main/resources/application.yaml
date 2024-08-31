@@ -1,0 +1,21 @@
+spring:
+  application:
+    name: "servicebus.consumer"
+  cloud:
+    function:
+      definition: consume
+    stream:
+      bindings:
+        consume-in-0:
+          destination: sbq-micro-batch-ktr-svc-dev-eastus
+      servicebus:
+        bindings:
+          consume-in-0:
+            consumer:
+              auto-complete: ${AUTO_COMPLETE:false}
+              entity-type: queue
+              max-auto-lock-renew-duration: ${MAX_AUTO_LOCK_RENEW_DURATION:PT3M}
+    azure:
+      servicebus:
+        namespace: sbp-mbp-dev-eastus
+        connection-string: ${SERVICE_BUS_CN}
