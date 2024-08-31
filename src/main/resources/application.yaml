@@ -7,7 +7,7 @@ spring:
     stream:
       bindings:
         consume-in-0:
-          destination: sbq-micro-batch-ktr-svc-dev-eastus
+          destination: ${QUEUE_NAME}
       servicebus:
         bindings:
           consume-in-0:
@@ -17,5 +17,5 @@ spring:
               max-auto-lock-renew-duration: ${MAX_AUTO_LOCK_RENEW_DURATION:PT3M}
     azure:
       servicebus:
-        namespace: sbp-mbp-dev-eastus
+        namespace: ${SERVICE_BUS_NS}
         connection-string: ${SERVICE_BUS_CN}
