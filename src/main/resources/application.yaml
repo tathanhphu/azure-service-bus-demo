@@ -7,6 +7,7 @@ spring:
     stream:
       bindings:
         consume-in-0:
+          error-handler-definition: myErrorHandler
           destination: ${QUEUE_NAME}
       servicebus:
         bindings:

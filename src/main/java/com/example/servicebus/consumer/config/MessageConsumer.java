@@ -17,8 +17,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.support.ErrorMessage;
+import org.springframework.util.StringUtils;
 
 import static com.azure.spring.messaging.AzureHeaders.CHECKPOINTER;
+import static java.lang.Thread.sleep;
 
 @Slf4j
 @Configuration
@@ -37,6 +40,7 @@ public class MessageConsumer {
     this.autoComplete = autoComplete;
     this.maxAutoLockRenewDuration = maxAutoLockRenewDuration;
   }
+// NEW
 
   @Bean
   public Consumer<Message<String>> consume() {
@@ -53,9 +57,11 @@ public class MessageConsumer {
       try {
         log.info("Received message: {}", message.getPayload());
         MessageDTO messageDTO = parseMessage(message.getPayload());
-        Thread.sleep(messageDTO.sleepTime() * 1000);
+        Thread.sleep((messageDTO.sleepTime() ) * 1000);
+        if (StringUtils.hasText(messageDTO.message())) {
 
-        // processMessage has only maximum default 60s to process the message
+            throw new RuntimeException(messageDTO.message());
+        }
         // see Message lock duration: https://docs.microsoft.com/en-us/azure/service-bus-messaging/message-transfers-locks-settlement
 
         if (!autoComplete) {
@@ -64,8 +70,12 @@ public class MessageConsumer {
 
       } catch (RuntimeException rte) {
         log.warn("Abandoning a message: {}", message.getPayload(), rte);
+        context.abandon();
         if (!autoComplete) {
+          // Move the message to deal letter queue  <code>context.deadLetter();<code>
           context.abandon();
+        } else {
+          throw rte;
         }
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
@@ -73,6 +83,7 @@ public class MessageConsumer {
       log.info("Message processed: {}", message.getHeaders().get(ServiceBusMessageHeaders.MESSAGE_ID));
     };
   }
+//*/
 
   private MessageDTO parseMessage(String message) {
     try {
@@ -91,7 +102,54 @@ public class MessageConsumer {
   public void init() {
     log.info("===================== SUMMARY ====================");
     log.info("Auto-complete is set to: {}", autoComplete);
-    log.info("Auto renewal is set to: {}", maxAutoLockRenewDuration.toSeconds());
+    log.info("Max auto renewal is set to: {} seconds", maxAutoLockRenewDuration.toSeconds());
     log.info("====================== END =======================");
   }
+
+  @Bean
+  public Consumer<ErrorMessage> myErrorHandler() {
+    return v -> {
+      // send SMS notification code
+
+      log.error("Consumer<ErrorMessage> {}", v);
+    };
+  }
+
+  // OLD
+/*
+  @Bean
+  public Consumer<Message<String>> consume() throws InterruptedException {
+    return message -> {
+      Checkpointer checkpointer = (Checkpointer) message.getHeaders().get(CHECKPOINTER);
+      if (Objects.isNull(checkpointer)) {
+        log.error("Checkpoint is null");
+        return;
+      }
+      checkpointer.success()
+        .doOnSuccess(
+          s -> {
+            logMessageHeaders(message);
+            log.info("Received message: {}", message.getPayload());
+            MessageDTO messageDTO = parseMessage(message.getPayload());
+            try {
+              sleep(messageDTO.sleepTime() * 1000L);
+            } catch (InterruptedException e) {
+              throw new RuntimeException(e);
+            }
+            log.info("after sleep");
+            if (StringUtils.hasText(messageDTO.message())) {
+              try {
+                throw new Exception(messageDTO.message());
+              } catch (Exception e) {
+                throw new RuntimeException(e);
+              }
+            }
+          })
+        .doOnError(e -> log.error("Error found", e))
+        .block();
+    };
+  }
+  //*/
+
+
 }
